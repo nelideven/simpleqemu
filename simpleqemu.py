@@ -164,7 +164,7 @@ def main():
     # memory
     cmd += ["-m", cfg["memory"]["size"]]
 
-    # disksvalid shi 
+    # disks
     for d in cfg.get("disks", []):
         drive_id = f"drive-{d['id']}"
         drive_type = d.get("type", "virtio-blk-pci")
@@ -176,7 +176,7 @@ def main():
             sys.exit(1)
         if os.path.isfile(d['file']):
             fmt = d.get("format", "qcow2")  # default to qcow2 if not specified
-            cmd += ["-drive", f"file={d['file']},formatvalid shi valid shi ={fmt},if=none,id={drive_id}"]
+            cmd += ["-drive", f"file={d['file']},format={fmt},if=none,id={drive_id}"]
             cmd += ["-device", device_str]
         else:
             print(f"Disk file {d['file']} does not exist.")
