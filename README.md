@@ -1,7 +1,7 @@
 # simpleqemu
 
 A simple QEMU runner script as a lightweight alternative to libvirt.  
-Written in Python, it uses YAML configuration files to launch VMs with support for CPU/memory tuning, disks, networking, audio, GPU, PCIe/USB passthrough, and TPM emulation.
+Written in Python, it uses YAML configuration files to launch VMs and supports CPU/memory tuning, disks, networking, audio, GPUs, PCIe/USB passthrough, and TPM emulation.
 
 ## Features
 - YAML‑based VM configuration
@@ -10,7 +10,7 @@ Written in Python, it uses YAML configuration files to launch VMs with support f
 - TPM emulator or passthrough
 - PCIe and USB passthrough
 - Audio and GPU device options
-- Interactive REPL monitor with command passthrough
+- Interactive REPL monitor with command passthrough (QEMU monitor)
 
 ## Requirements
 - Python 3.7+
