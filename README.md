@@ -22,4 +22,5 @@ Written in Python, it uses YAML configuration files to launch VMs and supports C
 
 ## Usage
 ```bash
-python3 simpleqemu.py /path/to/vm.yaml```
+python3 simpleqemu.py /path/to/vm.yaml
+```
