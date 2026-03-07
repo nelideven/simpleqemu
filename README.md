@@ -24,3 +24,10 @@ Written in Python, it uses YAML configuration files to launch VMs and supports C
 ```bash
 python3 simpleqemu.py /path/to/vm.yaml
 ```
+
+## License
+This project is licensed under the GNU General Public License v3.0.
+See https://www.gnu.org/licenses/ for details.
+
+## Contributing
+Pull requests are welcome! For major changes, please open an issue first to discuss the changes you’d like to make.
