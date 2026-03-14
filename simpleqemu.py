@@ -178,7 +178,7 @@ def main():
     for d in cfg.get("disks", []):
         drive_id = f"drive-{d['id']}"
         drive_type = d.get("type", "virtio-blk-pci")
-        device_str = f"{drive_type},drive={drive_id}"
+        device_str = f"{drive_type},drive={drive_id},bootindex={d.get('bootindex', 0)}"
         if cfg.get("sata", False) == True:
             device_str += f",bus=sata.{sata_port}"
             sata_port += 1
@@ -201,8 +201,7 @@ def main():
                 sys.exit(1)
             else:
                 subprocess.run(["pkexec", "chmod", "666", d['file']])
-                fmt = d.get("format", "raw")  # default to raw for block devices
-                cmd += ["-drive", f"file={d['file']},format={fmt},if=none,id={drive_id}"]
+                cmd += ["-drive", f"file={d['file']},format=raw,if=none,id={drive_id}"]
                 cmd += ["-device", device_str]
         else:
             print(f"Disk file {d['file']} does not exist.")
