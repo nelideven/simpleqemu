@@ -200,6 +200,7 @@ def main():
             else:
                 try:
                     subprocess.run(["qemu-img", "create", "-f", d.get("format", "qcow2"), d['file'], d.get('size', '20G')], check=True)
+                    fmt = d.get("format", "qcow2")
                     cmd += ["-drive", f"file={d['file']},format={fmt},if=none,id={drive_id}"]
                     cmd += ["-device", device_str]
                 except FileNotFoundError:
