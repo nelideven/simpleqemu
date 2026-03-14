@@ -172,7 +172,7 @@ def main():
     cmd += ["-m", cfg["memory"]["size"]]
 
     # disks
-    if cfg.get("disks", []).get("sata", False):
+    if cfg.get("sata", False) == True:
         cmd += ["-device", "ahci,id=sata"]
         sata_port = 0
     for d in cfg.get("disks", []):
