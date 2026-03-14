@@ -179,7 +179,7 @@ def main():
         drive_id = f"drive-{d['id']}"
         drive_type = d.get("type", "virtio-blk-pci")
         device_str = f"{drive_type},drive={drive_id}"
-        if d.get("sata", False) == True:
+        if cfg.get("sata", False) == True:
             device_str += f",bus=sata.{sata_port}"
             sata_port += 1
         if drive_type == "nvme":
