@@ -192,6 +192,18 @@ def main():
             fmt = d.get("format", "qcow2")  # default to qcow2 if not specified
             cmd += ["-drive", f"file={d['file']},format={fmt},if=none,id={drive_id}"]
             cmd += ["-device", device_str]
+        elif d['file'].startswith("/dev/"):
+            print("!!! WARNING !!!")
+            print(f"You're passing a block device {d['file']} directly to QEMU. This can be dangerous if you accidentally point it at the wrong device, as it may cause data loss on the host. Make sure you know EXACTLY which device you're passing.")
+            print("There is ZERO guarantee this will work. Worst case scenario, your device would be corrupted (no longer usable!)")
+            if input(f"Continue passing {d['file']} to QEMU? (y/N): ").lower() != 'y':
+                print("Exiting.")
+                sys.exit(1)
+            else:
+                subprocess.run(["pkexec", "chmod", "666", d['file']])
+                fmt = d.get("format", "raw")  # default to raw for block devices
+                cmd += ["-drive", f"file={d['file']},format={fmt},if=none,id={drive_id}"]
+                cmd += ["-device", device_str]
         else:
             print(f"Disk file {d['file']} does not exist.")
             if input(f"Do you want to make a new {d.get('size', '20G')} {d.get('format', 'qcow2')} disk at {d['file']}? (y/N): ").lower() != 'y':
