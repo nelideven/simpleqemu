@@ -40,6 +40,7 @@ def repl(sock, qemuproc):
     os.system("clear")  # clear the screen for a cleaner REPL experience
     print("Welcome to simpleqemu monitor! Type 'help' to get started or enter any QEMU monitor command to send it directly.")
     while True:
+        qcmd = ""
         try:
             line = input("qemu> ").strip()
             if not line:
@@ -53,8 +54,8 @@ def repl(sock, qemuproc):
                 print("  Any other input will be sent directly to the QEMU monitor as a command.")
             elif line.lower() in ["exit", "quit", "shutdown", "poweroff", "q"]:
                 print("Shutting down VM (via ACPI)...")
-                cmd = "system_powerdown"
-                sock.sendall((cmd + "\n").encode())
+                qcmd = "system_powerdown"
+                sock.sendall((qcmd + "\n").encode())
                 qemuproc.wait()
                 break
             elif line.lower().startswith("attach "):
@@ -63,12 +64,18 @@ def repl(sock, qemuproc):
                     print("  attach <device>: Attach a new device to the running VM.")
                     print("  Example: attach virtio-blk-pci,drive=drive-newdisk")
                     print("  Note: The device string must be a valid QEMU device specification. See QEMU documentation for details.")
-                    continue
             elif line.lower() == "qemuhelp":
-                cmd = "help"
+                qcmd = "help"
             else:
-                cmd = line  # raw passthrough
-            sock.sendall((cmd + "\n").encode())
+                qcmd = line  # raw passthrough
+            
+            if qcmd and qemuproc.poll() is None:  # only send if QEMU is still running
+                sock.sendall((qcmd + "\n").encode())
+                qcmd = ""  # reset qcmd to prevent accidental reuse
+
+            if qemuproc.poll() is not None:
+                print("QEMU process has exited.")
+                break
         except KeyboardInterrupt:
             print("\nShutting down VM (via ACPI)...")
             sock.sendall(("system_powerdown" + "\n").encode())
@@ -165,15 +172,22 @@ def main():
     cmd += ["-m", cfg["memory"]["size"]]
 
     # disks
+    if cfg.get("disks", []).get("sata", False):
+        cmd += ["-device", "ahci,id=sata"]
+        sata_port = 0
     for d in cfg.get("disks", []):
         drive_id = f"drive-{d['id']}"
         drive_type = d.get("type", "virtio-blk-pci")
         device_str = f"{drive_type},drive={drive_id}"
+        if d.get("sata", False) == True:
+            device_str += f",bus=sata.{sata_port}"
+            sata_port += 1
         if drive_type == "nvme":
             device_str += f",serial={d.get('serial', d['id'])}"
         if drive_type == "nvme" and fw.get("type") == "bios":
             print("NVMe devices require UEFI firmware. Exiting.")
             sys.exit(1)
+        
         if os.path.isfile(d['file']):
             fmt = d.get("format", "qcow2")  # default to qcow2 if not specified
             cmd += ["-drive", f"file={d['file']},format={fmt},if=none,id={drive_id}"]
@@ -186,6 +200,8 @@ def main():
             else:
                 try:
                     subprocess.run(["qemu-img", "create", "-f", d.get("format", "qcow2"), d['file'], d.get('size', '20G')], check=True)
+                    cmd += ["-drive", f"file={d['file']},format={fmt},if=none,id={drive_id}"]
+                    cmd += ["-device", device_str]
                 except FileNotFoundError:
                     print(f"qemu-img binary '{cmd[0]}' not found. Did you even install QEMU package?")
                     sys.exit(1)
@@ -301,7 +317,7 @@ if __name__ == "__main__":
         sys.exit(1)
     else:
         if os.getuid() == 0:
-            print("Warning: Running simpleqemu (QEMU) as root is extremely discouraged. Many things, including audio and networking will NOT work.")
+            print("Warning: Running simpleqemu (QEMU) as root is extremely discouraged. Many things, including audio and networking, will NOT work.")
             print("Root privileges for PCIe passthrough would be handled automatically.")
             if input("Continue running as root? (y/N): ").lower() != 'y':
                 print("Exiting.")
