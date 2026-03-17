@@ -110,7 +110,7 @@ def main():
 
     # machine + smbios
     m = cfg["machine"]
-    cmd += ["-machine", f"type={m['type']},accel={m['accel']}", "-monitor", f"unix:/tmp/qemu-monitor-{os.getuid()}-{cfg.get('name', os.getpid())}.sock,server,nowait"]
+    cmd += ["-machine", f"type={m['type']},accel={m['accel']}", "-monitor", f"unix:/tmp/qemu-monitor-{os.getuid()}-{cfg.get('name', os.getpid())}.sock,server,nowait", "-serial", "null"]
     smbios = m.get("smbios", {})
     if smbios:
         fields = ",".join([f"{k}={v}" for k,v in smbios.items()])
@@ -179,7 +179,7 @@ def main():
         drive_id = f"drive-{d['id']}"
         drive_type = d.get("type", "virtio-blk-pci")
         device_str = f"{drive_type},drive={drive_id},bootindex={d.get('bootindex', 0)}"
-        if cfg.get("sata", False) == True:
+        if cfg.get("sata", False) == True and drive_type in ["ide-hd", "ide-cd"]:
             device_str += f",bus=sata.{sata_port}"
             sata_port += 1
         if drive_type == "nvme":
@@ -189,9 +189,12 @@ def main():
             sys.exit(1)
         
         if os.path.isfile(d['file']):
-            fmt = d.get("format", "qcow2")  # default to qcow2 if not specified
-            cmd += ["-drive", f"file={d['file']},format={fmt},if=none,id={drive_id}"]
-            cmd += ["-device", device_str]
+            fmt = d.get("format", "raw")  # default to raw if not specified
+            if drive_type == "floppy":
+                cmd += ["-drive", f"file={d['file']},format={fmt},if=floppy,id={drive_id}"]
+            else:
+                cmd += ["-drive", f"file={d['file']},format={fmt},if=none,id={drive_id}"]
+                cmd += ["-device", device_str]
         elif d['file'].startswith("/dev/"):
             print("!!! WARNING !!!")
             print(f"You're passing a block device {d['file']} directly to QEMU. This can be dangerous if you accidentally point it at the wrong device, as it may cause data loss on the host. Make sure you know EXACTLY which device you're passing.")
