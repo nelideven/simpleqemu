@@ -55,8 +55,11 @@ def repl(sock, qemuproc):
             elif line.lower() in ["exit", "quit", "shutdown", "poweroff", "q"]:
                 print("Shutting down VM (via ACPI)...")
                 qcmd = "system_powerdown"
-                sock.sendall((qcmd + "\n").encode())
-                qemuproc.wait()
+                if qemuproc.poll() is not None:
+                    print("QEMU process has already exited.")
+                else:
+                    sock.sendall((qcmd + "\n").encode())
+                    qemuproc.wait()
                 break
             elif line.lower().startswith("attach "):
                 if line.lower() == "attach help":
@@ -78,8 +81,11 @@ def repl(sock, qemuproc):
                 break
         except KeyboardInterrupt:
             print("\nShutting down VM (via ACPI)...")
-            sock.sendall(("system_powerdown" + "\n").encode())
-            qemuproc.wait()
+            if qemuproc.poll() is not None:
+                print("QEMU process has already exited.")
+            else:
+                sock.sendall(("system_powerdown" + "\n").encode())
+                qemuproc.wait()
             break
 
 def main():
@@ -127,6 +133,9 @@ def main():
 
     # tpm
     tpm = cfg.get("tpm", {})
+    if tpm and fw.get("type") == "bios" and not tpm.get("backend", "emulator") == "none":
+        print("TPM requires UEFI firmware. Exiting.")
+        sys.exit(1)
     if tpm:
         tpm_backend = tpm.get("backend", "emulator")
         if tpm_backend == "emulator":
@@ -156,6 +165,8 @@ def main():
             else:
                 print(f"Specified TPM device '{tpm_path}' does not exist. Exiting.")
                 sys.exit(1)
+        elif tpm_backend == "none":
+            pass  # no TPM
         else:
             print(f"Unsupported TPM backend '{tpm_backend}' specified. Exiting.")
             sys.exit(1)
@@ -275,6 +286,7 @@ def main():
         cmd += ["-device", model]
 
     # PCIe passthrough
+    # For this, just add an entry inside pcie_passthrough with the PCI address of the device (e.g. "0000:01:00.0"). For multiple, use lists.
     for dev in cfg.get("pcie_passthrough", []):
         cmd += ["-device", f"vfio-pci,host={dev}"]
         group_dev = get_vfio_group(dev)
@@ -284,6 +296,7 @@ def main():
             print(f"Could not find VFIO group for device {dev}. Your device {dev} might not be properly bound to the vfio-pci driver; skipping {dev}.")
 
     # USB passthrough
+    # For this, just add an entry inside usb_passthrough with the VID:PID of the device. For multiple, use lists.
     if fw.get("type") == "bios":
         cmd += ["-device", "usb-ehci,id=usb"]  # enable USB2 controller for BIOS firmware (USB3 requires UEFI)
     else:
@@ -295,7 +308,8 @@ def main():
             shell=True, check=True, stdout=subprocess.PIPE
         )
         bus, dev = result.stdout.decode().strip().split()
-        node = f"/dev/bus/usb/{bus}/{dev}"
+        node = f"/dev/bus/usb/{bus}/{dev.replace(':', '')}"
+        print(f"USB device found at {node}.")
         subprocess.run(["pkexec", "chmod", "666", node])
         vid, pid = usb.split(":")
         cmd += ["-device", f"usb-host,vendorid=0x{vid},productid=0x{pid},bus=usb.0"]
