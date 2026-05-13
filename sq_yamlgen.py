@@ -151,6 +151,7 @@ if __name__ == "__main__":
                 "tpm": {"backend": tpm_backend, "path": tpm_path},
                 "pcie_passthrough": [],
                 "usb_passthrough": [],
+                "custom_parameters": [],
                 "dry_run": False
             }
         }
