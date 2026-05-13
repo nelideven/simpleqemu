@@ -314,6 +314,10 @@ def main():
         vid, pid = usb.split(":")
         cmd += ["-device", f"usb-host,vendorid=0x{vid},productid=0x{pid},bus=usb.0"]
 
+    # custom parameters
+    for param in cfg.get("custom_parameters", []):
+        cmd += shlex.split(param)
+
     # name
     if cfg.get("name"):
         cmd += ["-name", cfg["name"]]
